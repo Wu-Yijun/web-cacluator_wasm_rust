@@ -3,7 +3,13 @@
   "collaborators": [
     "Wu-Yijun <wuyijun21@mails.ucas.ac.cn>"
   ],
+  "description": "A simple calculator implemented in Rust and compiled to WebAssembly.",
   "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wu-Yijun/web-cacluator_wasm_rust"
+  },
   "files": [
     "web_caculator_rust_wasm_bg.wasm",
     "web_caculator_rust_wasm.js",

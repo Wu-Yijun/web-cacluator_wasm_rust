@@ -3,6 +3,9 @@ name = "web-caculator_rust_wasm"
 version = "0.1.0"
 authors = ["Wu-Yijun <wuyijun21@mails.ucas.ac.cn>"]
 edition = "2021"
+description = "A simple calculator implemented in Rust and compiled to WebAssembly."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Wu-Yijun/web-cacluator_wasm_rust"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
