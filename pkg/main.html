@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Game</title>
+</head>
+
+<body>
+    <script>
+        const values = [];
+        // 用于被 main.mjs 中的 import wasm 中引用
+        function addValue(value) {
+            values.push(value);
+            console.log(values);
+            return values.length;
+        }
+    </script>
+    <script type="module" src="./main.mjs"></script>
+</body>
+
+</html>
