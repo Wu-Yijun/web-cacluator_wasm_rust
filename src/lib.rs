@@ -1,4 +1,7 @@
+use my_parser::Parser;
 use wasm_bindgen::prelude::*;
+
+mod my_parser;
 
 // 导入函数
 #[wasm_bindgen]
@@ -47,6 +50,7 @@ impl MyStruct {
 // 导出函数
 #[wasm_bindgen]
 pub fn create_struct() -> MyStruct {
+    // Parser::new_inline("sin(x) + 12".to_string());
     MyStruct {
         flag: true,
         value: 42,
@@ -55,4 +59,12 @@ pub fn create_struct() -> MyStruct {
 
 // rust 中的测试
 #[test]
-fn test() {}
+fn test() {
+    let parser = Parser::new_inline(
+        "Plot(((x+0.1)^2)^cos(T)) /* 使用 Shift + 删除 消去一行 */ ".to_string(),
+    );
+    println!("{:#?}", parser);
+    parser.print();
+    // let four: f64 = 123.456;
+    // println!("{:#?}", four);
+}
