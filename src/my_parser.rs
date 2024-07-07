@@ -258,10 +258,10 @@ impl Token {
                 // false
                 return Token {
                     token_type: TokenType::Bool,
-                    lexeme: text[offset..offset + 4].iter().collect(),
+                    lexeme: text[offset..offset + 5].iter().collect(),
                     literal: Literal::from_bool(false),
                     line_colum,
-                    pos: [offset, offset + 4],
+                    pos: [offset, offset + 5],
                 };
             }
             _ => {}
