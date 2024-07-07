@@ -240,7 +240,33 @@ impl Token {
                 };
             }
         }
-
+        // judge Keywords
+        match text[offset] {
+            't' if char_starts_with(text, offset, "true") => {
+                // text starts with true and text[4] is not alphanumeric
+                // true
+                return Token {
+                    token_type: TokenType::Bool,
+                    lexeme: text[offset..offset + 4].iter().collect(),
+                    literal: Literal::from_bool(true),
+                    line_colum,
+                    pos: [offset, offset + 4],
+                };
+            }
+            'f' if char_starts_with(text, offset, "false") => {
+                // text starts with true and text[4] is not alphanumeric
+                // false
+                return Token {
+                    token_type: TokenType::Bool,
+                    lexeme: text[offset..offset + 4].iter().collect(),
+                    literal: Literal::from_bool(false),
+                    line_colum,
+                    pos: [offset, offset + 4],
+                };
+            }
+            _ => {}
+        }
+        // others mainly literals
         match text[offset] {
             '\'' if Some(&'\\') != text.get(offset + 1) && Some(&'\'') == text.get(offset + 2) => {
                 // char '.'
@@ -285,7 +311,7 @@ impl Token {
                     .iter()
                     .collect();
                 Token {
-                    token_type: TokenType::MuitiLineComment,
+                    token_type: TokenType::String,
                     lexeme,
                     literal: Literal::from_char_vec(literal),
                     line_colum,
@@ -373,11 +399,7 @@ impl Token {
                         }
                         TokenType::Less if Some(&'=') == text.get(offset + 1) => {
                             len = 2;
-                            TokenType::EqualEqual
-                        }
-                        TokenType::LessEqual if Some(&'=') == text.get(offset + 1) => {
-                            len = 2;
-                            TokenType::EqualEqual
+                            TokenType::LessEqual
                         }
                         others => others,
                     };
@@ -577,6 +599,19 @@ impl Literal {
         let s: String = cs.into_iter().collect();
         Some(Literal::String(s))
     }
+    pub fn from_bool(b: bool) -> Option<Self> {
+        Some(Literal::Bool(b))
+    }
+}
+
+impl Identifier {
+    fn new(name: String) -> Self {
+        Identifier {
+            name,
+            fun: false,
+            var: false,
+        }
+    }
 }
 
 fn slash_char(c: char) -> char {
@@ -591,12 +626,19 @@ fn slash_char(c: char) -> char {
     }
 }
 
-impl Identifier {
-    fn new(name: String) -> Self {
-        Identifier {
-            name,
-            fun: false,
-            var: false,
-        }
+fn char_starts_with(c: &[char], offset: usize, s: &str) -> bool {
+    if c.len() < s.len() + offset
+        || c.get(offset + s.len())
+            .is_some_and(|c| c.is_ascii_alphanumeric())
+    {
+        return false;
     }
+    let mut i = 0;
+    for c0 in s.chars() {
+        if c0 != c[offset + i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
 }

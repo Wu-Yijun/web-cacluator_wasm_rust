@@ -81,7 +81,7 @@ fn test() {
     // stdout().write_all(parser.print(1).as_bytes());
     // stdout().write_all(b"\n-------------------------\n");
     // stdout().write_all(parser.print(0).as_bytes());
-    // println!("{:?}", );
+    println!("{:?}", parser.print(3));
     // println!("{:?}", parser.print(4));
     // println!("{:?}", parser.print(3));
     // println!("{:?}", parser.print(2));
