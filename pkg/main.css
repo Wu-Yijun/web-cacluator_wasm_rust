@@ -1,0 +1,34 @@
+#test-parser,
+.card {
+    border: 1px solid grey;
+    border-radius: 10px;
+    margin: 40px;
+}
+
+.card-header {
+    margin: 0;
+    padding: 20px;
+    font-size: 2em;
+    font-weight: bolder;
+    border-bottom: 1px dotted black;
+}
+
+#test-parser h3 {
+    margin-left: 20px;
+}
+
+#test-parser #parser-input {
+    font-size: 2em;
+    border: 1px solid grey;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 20px;
+}
+
+#test-parser #parser-output {
+    font-size: 1.5em;
+    border: 1px solid grey;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 20px;
+}

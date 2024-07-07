@@ -57,14 +57,34 @@ pub fn create_struct() -> MyStruct {
     }
 }
 
+#[wasm_bindgen]
+pub fn parse(input: &str, level: u32) -> String {
+    Parser::new_inline(input.to_string()).print(level as usize)
+}
+
 // rust 中的测试
 #[test]
 fn test() {
     let parser = Parser::new_inline(
         "Plot(((x+0.1)^2)^cos(T)) /* 使用 Shift + 删除 消去一行 */ ".to_string(),
     );
-    println!("{:#?}", parser);
-    parser.print();
+    // stdout().write_all(parser.print(5).as_bytes());
+    // stdout().write_all(b"\n-------------------------\n");
+    // stdout().write_all(parser.print(4).as_bytes());
+    // stdout().write_all(b"\n-------------------------\n");
+    // stdout().write_all(parser.print(3).as_bytes());
+    // stdout().write_all(b"\n-------------------------\n");
+    // stdout().write_all(parser.print(2).as_bytes());
+    // stdout().write_all(b"\n-------------------------\n");
+    // stdout().write_all(parser.print(1).as_bytes());
+    // stdout().write_all(b"\n-------------------------\n");
+    // stdout().write_all(parser.print(0).as_bytes());
+    // println!("{:?}", );
+    // println!("{:?}", parser.print(4));
+    // println!("{:?}", parser.print(3));
+    // println!("{:?}", parser.print(2));
+    // println!("{:?}", parser.print(1));
+    // println!("{:?}", parser.print(0));
     // let four: f64 = 123.456;
     // println!("{:#?}", four);
 }

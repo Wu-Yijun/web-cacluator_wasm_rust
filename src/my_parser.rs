@@ -39,6 +39,8 @@ enum TokenType {
     Comma,
     /// .
     Dot,
+    /// :
+    Colon,
     /// ^
     Caret,
     /// ;
@@ -166,10 +168,8 @@ impl Parser {
         }
     }
 
-    pub fn print(&self) {
-        for t in self.tokens.iter() {
-            t.print();
-        }
+    pub fn print(&self, level: usize) -> String {
+        self.tokens.iter().map(|t| t.print(level)).collect()
     }
 }
 
@@ -260,6 +260,21 @@ impl Token {
                     literal: Some(Literal::from_slash_char(text[offset + 2])),
                     line_colum,
                     pos: [offset, offset + 4],
+                }
+            }
+            '"' => {
+                len += 1;
+                while offset + len < text.len() && text[offset + len] != '"' {
+                    len += 1;
+                }
+                Token {
+                    token_type: TokenType::MuitiLineComment,
+                    lexeme: text[offset..text.len().min(offset + len + 1)]
+                        .iter()
+                        .collect(),
+                    literal: None,
+                    line_colum,
+                    pos: [offset, text.len().min(offset + len + 1)],
                 }
             }
             'a'..='z' | 'A'..='Z' | '_' => {
@@ -369,8 +384,29 @@ impl Token {
         self.token_type == TokenType::EOF
     }
 
-    fn print(&self) {
-        print!("{:?} ", self.token_type);
+    fn print(&self, level: usize) -> String {
+        match level {
+            5 => format!("{:#?}\n", self),
+            4 => format!("{:?}\n", self),
+            3 => {
+                let t = format!("Type:{:<20?}", self.token_type);
+                let t2 = format!(
+                    "{}\t<Line, Colum>{:?} \t<Start, End>{:?} \tContent({:?}) \tLiteral({:?})\n",
+                    " ".repeat(20 - t.len().min(20)),
+                    self.line_colum,
+                    self.pos,
+                    self.lexeme,
+                    self.literal
+                );
+                t + &t2
+            }
+            2 => format!(
+                "{:?}{:?}({:?})\n",
+                self.token_type, self.line_colum, self.lexeme
+            ),
+            1 => format!("{:?}({:?}) ", self.token_type, self.lexeme),
+            _ => format!("{:?} ", self.token_type),
+        }
     }
 }
 
@@ -380,7 +416,7 @@ impl TokenType {
             '(' => Some(TokenType::LeftParen),
             ')' => Some(TokenType::RightParen),
             '{' => Some(TokenType::LeftBrace),
-            '}' => Some(TokenType::LeftBrace),
+            '}' => Some(TokenType::RightBrace),
             '[' => Some(TokenType::LeftSquare),
             ']' => Some(TokenType::RightSquare),
             ',' => Some(TokenType::Comma),
@@ -388,6 +424,7 @@ impl TokenType {
             '^' => Some(TokenType::Caret),
             '-' => Some(TokenType::Minus),
             '+' => Some(TokenType::Plus),
+            ':' => Some(TokenType::Colon),
             ';' => Some(TokenType::Semicolon),
             '/' => Some(TokenType::Slash),
             '*' => Some(TokenType::Star),
@@ -414,6 +451,7 @@ impl TokenType {
             TokenType::Minus => c == '-',
             TokenType::Plus => c == '+',
             TokenType::Semicolon => c == ';',
+            TokenType::Colon => c == ':',
             TokenType::Slash => c == '/',
             TokenType::Star => c == '*',
             TokenType::Bang => c == '!',

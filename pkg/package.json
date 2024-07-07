@@ -13,7 +13,9 @@
   "files": [
     "web_caculator_rust_wasm_bg.wasm",
     "web_caculator_rust_wasm.js",
-    "web_caculator_rust_wasm.d.ts"
+    "web_caculator_rust_wasm.d.ts",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
   ],
   "module": "web_caculator_rust_wasm.js",
   "types": "web_caculator_rust_wasm.d.ts",

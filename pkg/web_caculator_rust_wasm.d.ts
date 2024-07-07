@@ -5,6 +5,12 @@
 */
 export function create_struct(): MyStruct;
 /**
+* @param {string} input
+* @param {number} level
+* @returns {string}
+*/
+export function parse(input: string, level: number): string;
+/**
 */
 export class MyStruct {
   free(): void;
@@ -37,6 +43,11 @@ export interface InitOutput {
   readonly mystruct_get_value: (a: number) => number;
   readonly mystruct_add_value: (a: number, b: number) => void;
   readonly create_struct: () => number;
+  readonly parse: (a: number, b: number, c: number, d: number) => void;
+  readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
+  readonly __wbindgen_malloc: (a: number, b: number) => number;
+  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
