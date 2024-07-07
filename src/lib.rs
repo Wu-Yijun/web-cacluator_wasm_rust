@@ -66,7 +66,9 @@ pub fn parse(input: &str, level: u32) -> String {
 #[test]
 fn test() {
     let parser = Parser::new_inline(
-        "Plot(((x+0.1)^2)^cos(T)) /* 使用 Shift + 删除 消去一行 */ ".to_string(),
+        "y: \"string \\\\ \\n \\t \\' \\\" $ \"".to_string(),
+        // "Plot(((x+0.1)^2)^cos(T)) /* 使用 Shift + 删除 消去一行 */ ".to_string(),
+        
     );
     // stdout().write_all(parser.print(5).as_bytes());
     // stdout().write_all(b"\n-------------------------\n");

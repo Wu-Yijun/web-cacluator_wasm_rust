@@ -247,7 +247,7 @@ impl Token {
                 Token {
                     token_type: TokenType::Char,
                     lexeme: text[offset..offset + 3].iter().collect(),
-                    literal: Some(Literal::from_char(text[offset + 1])),
+                    literal: Literal::from_char(text[offset + 1]),
                     line_colum,
                     pos: [offset, offset + 3],
                 }
@@ -257,22 +257,37 @@ impl Token {
                 Token {
                     token_type: TokenType::Char,
                     lexeme: text[offset..offset + 4].iter().collect(),
-                    literal: Some(Literal::from_slash_char(text[offset + 2])),
+                    literal: Literal::from_slash_char(text[offset + 2]),
                     line_colum,
                     pos: [offset, offset + 4],
                 }
             }
             '"' => {
                 len += 1;
-                while offset + len < text.len() && text[offset + len] != '"' {
+                let mut literal = vec![];
+                let mut slash_flag = false;
+                while offset + len < text.len()
+                    && (slash_flag || text[offset + len] != '"')
+                    && !TokenType::NewLine.is_char(text[offset + len])
+                {
+                    let c = text[offset + len];
+                    if slash_flag {
+                        literal.push(slash_char(c));
+                        slash_flag = false;
+                    } else if c == '\\' {
+                        slash_flag = true;
+                    } else {
+                        literal.push(c);
+                    }
                     len += 1;
                 }
+                let lexeme = text[offset..text.len().min(offset + len + 1)]
+                    .iter()
+                    .collect();
                 Token {
                     token_type: TokenType::MuitiLineComment,
-                    lexeme: text[offset..text.len().min(offset + len + 1)]
-                        .iter()
-                        .collect(),
-                    literal: None,
+                    lexeme,
+                    literal: Literal::from_char_vec(literal),
                     line_colum,
                     pos: [offset, text.len().min(offset + len + 1)],
                 }
@@ -322,7 +337,7 @@ impl Token {
                     }
                 }
                 let lexeme: String = text[offset..offset + len].iter().collect();
-                let literal = Some(Literal::from_number(&lexeme));
+                let literal = Literal::from_number(&lexeme);
 
                 return Token {
                     token_type: TokenType::Number,
@@ -433,7 +448,7 @@ impl TokenType {
             '!' => Some(TokenType::Bang),
             '=' => Some(TokenType::Equal),
             '>' => Some(TokenType::Greater),
-            '<' => Some(TokenType::LessEqual),
+            '<' => Some(TokenType::Less),
             _ => None,
         }
     }
@@ -468,21 +483,13 @@ impl TokenType {
 }
 
 impl Literal {
-    pub fn from_char(c: char) -> Self {
-        Literal::Char(c)
+    pub fn from_char(c: char) -> Option<Self> {
+        Some(Literal::Char(c))
     }
-    pub fn from_slash_char(c: char) -> Self {
-        match c {
-            '\\' => Literal::Char('\\'),
-            '\'' => Literal::Char('\''),
-            '"' => Literal::Char('"'),
-            'n' => Literal::Char('\n'),
-            'r' => Literal::Char('\r'),
-            't' => Literal::Char('\t'),
-            _ => Literal::Char(c),
-        }
+    pub fn from_slash_char(c: char) -> Option<Self> {
+        Some(Literal::Char(slash_char(c)))
     }
-    pub fn from_number(n: &String) -> Self {
+    pub fn from_number(n: &String) -> Option<Self> {
         println!("num: {n}");
         let mut n = n.replace('_', "").to_lowercase();
         let mut radix = 10;
@@ -564,7 +571,23 @@ impl Literal {
         if error {
             println!("Number parse Error!");
         }
-        Literal::Number(d)
+        Some(Literal::Number(d))
+    }
+    pub fn from_char_vec(cs: Vec<char>) -> Option<Self> {
+        let s: String = cs.into_iter().collect();
+        Some(Literal::String(s))
+    }
+}
+
+fn slash_char(c: char) -> char {
+    match c {
+        '\\' => '\\',
+        '\'' => '\'',
+        '"' => '"',
+        'n' => '\n',
+        'r' => '\r',
+        't' => '\t',
+        _ => c,
     }
 }
 

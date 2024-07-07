@@ -26,8 +26,8 @@
         <div id="parser-header" class="card-header"> Rust://src/parser.rs 词法分析器 WASM 展示</div>
         <h3>待词法分析的内容:</h3>
         <pre contenteditable="true" placeholder="请输入表达式"
-            id="parser-input">print(123, [u32; 2], fun(), x.y, [2:3], 0xFF_ff_32_87, {x: 'c', y: "string"}, /* complexed literals */ 1.23_456_789_0e-5f32)
-        if x &lt;= 5 { retrun 0; }</pre>
+            id="parser-input">print(123, [u32; 2], fun(), x.y, [2:3], 0xFF_ff_32_87, {x: 'c', y: "string \\ \n \t \' \" $ "}, /* complexed literals */ 1.23_456_789_0e-5f32)
+if x &lt;= 5 { retrun 0; }</pre>
         <h3>词法分析后的内容:</h3>
         <pre id="parser-output"></pre>
     </div>
