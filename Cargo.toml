@@ -37,3 +37,7 @@ wasm-bindgen-test = "*"
 [profile.dev]
 debug = true
 opt-level = 0
+
+[[test]]
+path = "test/test_calc.rs"
+name = "test_calc"

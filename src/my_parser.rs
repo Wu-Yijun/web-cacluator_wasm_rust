@@ -1,5 +1,10 @@
 use std::f64;
 
+use crate::{
+    my_math::{self, Val},
+    my_runtime::Runtime,
+};
+
 #[derive(Debug)]
 pub struct LexicalParser {
     tokens: Vec<Token>,
@@ -561,6 +566,14 @@ impl TokenType {
             _ => c == self.to_char(),
         }
     }
+
+    pub fn get_priority(&self) -> usize {
+        match self {
+            Self::Plus | Self::Minus => 1,
+            Self::Star | Self::Slash | Self::Percent => 2,
+            _ => 0,
+        }
+    }
 }
 
 impl Literal {
@@ -758,7 +771,7 @@ fn char_starts_with(c: &[char], offset: usize, s: &str) -> bool {
 
 // ----------- syntax parser ------------------- //
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Article {
     Sentences(Vec<Sentence>),
 }
@@ -797,15 +810,27 @@ impl Article {
                 let mut res = format!("+Article Sentences {}", ss.len());
                 for s in ss {
                     res += "\n";
-                    res += &(INDENT.repeat(level) + "+   " + &s.tree(level, html));
+                    res += &(INDENT.repeat(level) + "+---" + &s.tree(level + 1, html));
                 }
                 res
             }
         }
     }
+
+    pub fn calc(&self, rt: &mut Runtime) -> Val {
+        match self {
+            Self::Sentences(ss) => {
+                let mut res = vec![];
+                for i in ss {
+                    res.push(i.calc(rt));
+                }
+                Val::Vars(my_math::Tuple(res))
+            }
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Sentence {
     AssignmentExp(AssignmentExp),
     Expression(Expression),
@@ -815,7 +840,7 @@ pub enum Sentence {
     Block(Vec<Sentence>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AssignmentExp(Identifier, Expression);
 
 impl Sentence {
@@ -926,6 +951,21 @@ impl Sentence {
             }
         }
     }
+
+    pub fn calc(&self, rt: &mut Runtime) -> Val {
+        match self {
+            Self::AssignmentExp(ass) => ass.calc(rt),
+            Sentence::Expression(ex) => ex.calc(rt),
+            Sentence::Seperator => Val::NONE,
+            Sentence::Block(b) => {
+                let mut res = vec![];
+                for s in b {
+                    res.push(s.calc(rt));
+                }
+                Val::Vars(my_math::Tuple(res))
+            }
+        }
+    }
 }
 
 impl AssignmentExp {
@@ -990,17 +1030,23 @@ impl AssignmentExp {
             self.1.tree(level + 1, html)
         )
     }
+
+    pub fn calc(&self, rt: &mut Runtime) -> Val {
+        let val = self.1.calc(rt);
+        let res = rt.set_val(self.0.name.clone(), val);
+        Val::NONE
+    }
 }
 
 // basic expression
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Expression {
     /// exp ([+-*/] exp)*
     Operation(CalcUnit, Vec<(TokenType, CalcUnit)>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum CalcUnit {
     /// 123
     Literal(Literal),
@@ -1018,7 +1064,7 @@ pub enum CalcUnit {
     Tuple(Tuple),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Tuple {
     val: Vec<Expression>,
 }
@@ -1109,7 +1155,7 @@ impl Expression {
     pub fn tree(&self, level: usize, html: bool) -> String {
         match self {
             Expression::Operation(cu, us) => {
-                let mut res = "+Expression: \n".to_string();
+                let mut res = format!("+Expression: {}\n", us.len());
                 res += &(INDENT.repeat(level) + "+---" + &cu.tree(level + 1, html));
                 for (tt, u) in us {
                     res += "\n";
@@ -1120,6 +1166,34 @@ impl Expression {
                     res += &(INDENT.repeat(level) + "+---" + &u.tree(level + 1, html));
                 }
                 res
+            }
+        }
+    }
+
+    pub fn calc(&self, rt: &mut Runtime) -> Val {
+        match self {
+            Self::Operation(cu, t_cu_vec) => {
+                let mut values: Vec<Val> = vec![cu.calc(rt).reduce()];
+                let mut operators: Vec<TokenType> = vec![];
+                for (op, val) in t_cu_vec {
+                    while !operators.is_empty()
+                        && operators.last().unwrap().get_priority() >= op.get_priority()
+                    {
+                        let b = values.pop().unwrap();
+                        let a = values.pop().unwrap();
+                        let oper = operators.pop().unwrap();
+                        values.push(a.calc(&b, oper));
+                    }
+                    values.push(val.calc(rt).reduce());
+                    operators.push(*op);
+                }
+                while !operators.is_empty() {
+                    let b = values.pop().unwrap();
+                    let a = values.pop().unwrap();
+                    let oper = operators.pop().unwrap();
+                    values.push(a.calc(&b, oper));
+                }
+                values.pop().unwrap().reduce()
             }
         }
     }
@@ -1280,6 +1354,66 @@ impl CalcUnit {
             CalcUnit::Tuple(t) => t.tree(level, html),
         }
     }
+
+    pub fn calc(&self, rt: &mut Runtime) -> Val {
+        match self {
+            CalcUnit::Literal(Literal::Number(d)) => Val::Re(my_math::Re(*d)),
+            CalcUnit::Literal(Literal::Identifier(x)) => rt.get_val(&x.name).unwrap_or_else(|| {
+                rt.get_sys_val(&x.name)
+                    .unwrap_or(&Val::NONE)
+                    .to_owned()
+                    .reduce()
+            }),
+            CalcUnit::NegVal(Literal::Number(d)) => Val::Re(my_math::Re(*d)).neg(),
+            CalcUnit::NegVal(Literal::Identifier(x)) => rt
+                .get_val(&x.name)
+                .unwrap_or_else(|| {
+                    rt.get_sys_val(&x.name)
+                        .unwrap_or(&Val::NONE)
+                        .to_owned()
+                        .reduce()
+                })
+                .neg(),
+            CalcUnit::Identifier(x) => rt.get_val(&x.name).unwrap_or_else(|| {
+                rt.get_sys_val(&x.name)
+                    .unwrap_or(&Val::NONE)
+                    .to_owned()
+                    .reduce()
+            }),
+            CalcUnit::NegVar(x) => rt
+                .get_val(&x.name)
+                .unwrap_or_else(|| {
+                    rt.get_sys_val(&x.name)
+                        .unwrap_or(&Val::NONE)
+                        .to_owned()
+                        .reduce()
+                })
+                .neg(),
+            CalcUnit::Function(f, vars) => rt
+                .get_val(&f.name)
+                .unwrap_or_else(|| {
+                    rt.get_sys_val(&f.name)
+                        .unwrap_or(&Val::NONE)
+                        .to_owned()
+                        .reduce()
+                })
+                .calls(vars.calc(rt).reduce(), rt)
+                .reduce(),
+            CalcUnit::NegFun(f, vars) => rt
+                .get_val(&f.name)
+                .unwrap_or_else(|| {
+                    rt.get_sys_val(&f.name)
+                        .unwrap_or(&Val::NONE)
+                        .to_owned()
+                        .reduce()
+                })
+                .calls(vars.calc(rt).reduce(), rt)
+                .reduce()
+                .neg(),
+            CalcUnit::Tuple(vars) => vars.calc(rt).reduce(),
+            _ => Val::NONE,
+        }
+    }
 }
 
 impl Tuple {
@@ -1345,12 +1479,20 @@ impl Tuple {
     }
 
     fn tree(&self, level: usize, html: bool) -> String {
-        let mut res = "+Tuple ".to_string() + &tree_node(html, &self.val.len().to_string());
+        let mut res = format!("+Tuple: {}", self.val.len());
         for i in self.val.iter() {
             res += "\n";
             res += &(INDENT.repeat(level) + "+---" + &i.tree(level + 1, html));
         }
         res
+    }
+
+    pub fn calc(&self, rt: &mut Runtime) -> Val {
+        let mut res = vec![];
+        for e in &self.val {
+            res.push(e.calc(rt).reduce());
+        }
+        Val::Vars(my_math::Tuple(res))
     }
 }
 
