@@ -1,4 +1,6 @@
-use my_parser::LexicalParser;
+use std::fmt::format;
+
+use my_parser::{Article, LexicalParser};
 use my_runtime::Runtime;
 use wasm_bindgen::prelude::*;
 
@@ -76,12 +78,47 @@ pub fn pares_and_print_html(input: &str) -> String {
     line1 + "\n<span class='tree_syntax'>" + &line2 + "</span>"
 }
 
+#[wasm_bindgen]
+pub struct Caculator {
+    rt: Runtime,
+    res: my_math::Val,
+    a: Article,
+    p: LexicalParser,
+}
+
+#[wasm_bindgen]
+impl Caculator {
+    pub fn new(input: &str) -> Self {
+        let p = LexicalParser::new_inline(input.to_string());
+        let a = p.parse();
+        let mut rt = Runtime::new();
+        let res = a.calc(&mut rt);
+        Self { rt, res, a, p }
+    }
+    pub fn new_parser(&mut self, input: &str) {
+        self.p = LexicalParser::new_inline(input.to_string());
+    }
+    pub fn parse(&mut self) {
+        self.a = self.p.parse();
+    }
+    pub fn calc(&mut self) {
+        self.res = self.a.calc(&mut self.rt);
+    }
+    pub fn get_html(&self) -> String {
+        // println!("Hello!!!!!!!");
+        // format!("{:#?}", self.res)
+        // self.a.tree(0, true)
+        self.res.print(&mut 0)
+    }
+}
+
 // rust 中的测试
 #[test]
 fn test() {
     let parser = LexicalParser::new_inline(
         // expressions
-        "x = 5;2 + 2 / 5 - 9 % (2 + 3) + x".to_string(),
+        "x = 5{y=5;-2 y + x;x=4;-2 y + x}2 + 2 / 5 - 9 % (2 + 3)  + sin(x)".to_string(),
+        // "sin(1)".to_string();
         // "sin(x, y+ 2*(3+-5.3f32 -x));plot(X);{x;y+1}".to_string(),
         // "2(3+5 x)()".to_string(),
     );
@@ -91,6 +128,6 @@ fn test() {
 
     let mut runtime = Runtime::new();
 
-    let res = exp.calc(&mut runtime).reduce();
+    let res: my_math::Val = exp.calc(&mut runtime).reduce();
     println!("{:#?}", res);
 }

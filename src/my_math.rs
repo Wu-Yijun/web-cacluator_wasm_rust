@@ -1,13 +1,37 @@
 use std::collections::HashMap;
 
-use crate::{my_parser::TokenType, my_runtime::Runtime};
+use crate::{
+    my_parser::TokenType,
+    my_runtime::{Runtime, System},
+};
+
+pub(crate) mod my_functions;
 
 #[derive(Clone, Debug)]
 pub enum Val {
     Re(Re),
     Im(Im),
-    Fn(Fn),
+    Fun(Fun),
     Vars(Tuple),
+}
+impl Val {
+    pub fn print(&self, index: &mut usize) -> String {
+        match self {
+            Val::Re(Re(v)) => {
+                *index += 1;
+                format!("[out {index}] {v}\n")
+            }
+            Val::Im(Im(u, v)) => {
+                *index += 1;
+                format!("[out {index}] {u}+{v}i\n")
+            }
+            Val::Fun(Fun::System(name)) => {
+                *index += 1;
+                format!("[out {index}] @fun: {name}\n")
+            }
+            Val::Vars(t) => t.print(index),
+        }
+    }
 }
 impl Val {
     pub const NONE: Self = Val::Vars(Tuple::NONE);
@@ -76,9 +100,9 @@ impl Val {
     }
 
     /// call f(vars) where f is self
-    pub fn calls(&self, vars: Val, rt: &mut Runtime) -> Val {
+    pub fn calls(&self, rt: &mut Runtime, vars: Val) -> Val {
         match self {
-            Val::Fn(f) => (f.get)(vars, rt),
+            Val::Fun(Fun::System(name)) => System::calls(rt, name, vars),
             _ => Self::NONE,
         }
     }
@@ -91,8 +115,8 @@ pub struct Re(pub f64);
 pub struct Im(pub f64, pub f64);
 
 #[derive(Clone, Debug)]
-pub struct Fn {
-    pub get: fn(Val, &mut Runtime) -> Val,
+pub enum Fun {
+    System(String),
 }
 
 #[derive(Clone, Debug)]
@@ -101,43 +125,18 @@ impl Tuple {
     pub const NONE: Self = Tuple(vec![]);
 }
 
+impl Tuple {
+    fn print(&self, index: &mut usize) -> String {
+        let mut res = String::new();
+        for v in &self.0 {
+            res += &v.print(index);
+        }
+        res
+    }
+}
+
 /// create default functions and vars
 pub fn intial_system() -> HashMap<String, Val> {
     let mut res = HashMap::new();
     res
 }
-
-// impl From<f64> for MyVal {
-//     fn from(value: f64) -> Self {
-//         Self { re: value, im: 0.0 }
-//     }
-// }
-// impl Into<f64> for MyVal {
-//     fn into(self) -> f64 {
-//         self.re
-//     }
-// }
-// impl Into<f64> for &MyVal {
-//     fn into(self) -> f64 {
-//         self.re
-//     }
-// }
-// impl From<(f64, f64)> for MyVal {
-//     fn from(value: (f64, f64)) -> Self {
-//         MyVal {
-//             re: value.0,
-//             im: value.1,
-//         }
-//     }
-// }
-
-// struct MyTuple {
-//     len: usize,
-//     val: Vec<MyVar>,
-// }
-
-// struct MyFn {
-//     val: fn(MyTuple) -> MyVal,
-// }
-
-mod my_functions;

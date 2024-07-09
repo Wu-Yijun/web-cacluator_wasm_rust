@@ -1,5 +1,5 @@
 // 导入 wasm 模块，以及 wasm 模块导出的类
-import initSync, {MyStruct} from './web_caculator_rust_wasm.js'
+import initSync, {MyStruct, Caculator } from './web_caculator_rust_wasm.js'
 import {create_struct, parse, pares_and_print_html} from './web_caculator_rust_wasm.js'
 
 // 初始化
@@ -38,6 +38,18 @@ function update_parser_syntax(){
 }
 document.getElementById('parser-syntax-input').oninput = update_parser_syntax;
 update_parser_syntax();
+
+const mycalc = Caculator.new(document.getElementById('caculator-input').innerText);
+document.getElementById('caculator-output').innerHTML = mycalc.get_html();
+function update_caculator(){
+    debugger;
+    let value = document.getElementById('caculator-input').innerText;
+    mycalc.new_parser(value);
+    mycalc.parse();
+    mycalc.calc();
+    document.getElementById('caculator-output').innerHTML = mycalc.get_html();
+}
+document.getElementById('caculator-input').oninput = update_caculator;
 
 // 设置点击折叠功能
 for( let element of document.getElementsByClassName('card-header')) {

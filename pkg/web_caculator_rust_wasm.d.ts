@@ -17,6 +17,30 @@ export function parse(input: string, level: number): string;
 export function pares_and_print_html(input: string): string;
 /**
 */
+export class Caculator {
+  free(): void;
+/**
+* @param {string} input
+* @returns {Caculator}
+*/
+  static new(input: string): Caculator;
+/**
+* @param {string} input
+*/
+  new_parser(input: string): void;
+/**
+*/
+  parse(): void;
+/**
+*/
+  calc(): void;
+/**
+* @returns {string}
+*/
+  get_html(): string;
+}
+/**
+*/
 export class MyStruct {
   free(): void;
 /**
@@ -50,6 +74,12 @@ export interface InitOutput {
   readonly create_struct: () => number;
   readonly parse: (a: number, b: number, c: number, d: number) => void;
   readonly pares_and_print_html: (a: number, b: number, c: number) => void;
+  readonly __wbg_caculator_free: (a: number) => void;
+  readonly caculator_new: (a: number, b: number) => number;
+  readonly caculator_new_parser: (a: number, b: number, c: number) => void;
+  readonly caculator_parse: (a: number) => void;
+  readonly caculator_calc: (a: number) => void;
+  readonly caculator_get_html: (a: number, b: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

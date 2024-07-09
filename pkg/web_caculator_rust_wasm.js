@@ -136,6 +136,81 @@ export function pares_and_print_html(input) {
     }
 }
 
+const CaculatorFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_caculator_free(ptr >>> 0));
+/**
+*/
+export class Caculator {
+
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(Caculator.prototype);
+        obj.__wbg_ptr = ptr;
+        CaculatorFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        CaculatorFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_caculator_free(ptr);
+    }
+    /**
+    * @param {string} input
+    * @returns {Caculator}
+    */
+    static new(input) {
+        const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.caculator_new(ptr0, len0);
+        return Caculator.__wrap(ret);
+    }
+    /**
+    * @param {string} input
+    */
+    new_parser(input) {
+        const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.caculator_new_parser(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+    */
+    parse() {
+        wasm.caculator_parse(this.__wbg_ptr);
+    }
+    /**
+    */
+    calc() {
+        wasm.caculator_calc(this.__wbg_ptr);
+    }
+    /**
+    * @returns {string}
+    */
+    get_html() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.caculator_get_html(retptr, this.__wbg_ptr);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+}
+
 const MyStructFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_mystruct_free(ptr >>> 0));

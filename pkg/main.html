@@ -37,7 +37,7 @@ if x &lt;= 5 { retrun 0; }</pre>
         </div>
     </div>
     <div id="test-syntax-parser" class="card">
-        <div id="parser-syntax-header" class="card-header"> Rust://src/my_parser.rs 语法分析器 WASM 展示</div>
+        <div id="parser-syntax-header" class="card-header card-hide"> Rust://src/my_parser.rs 语法分析器 WASM 展示</div>
         <div class="card-content">
             <h3>待语法分析的内容:</h3>
             <pre contenteditable="true" placeholder="请输入表达式" id="parser-syntax-input" class="card-input">
@@ -51,6 +51,23 @@ print('c',"str",3.1415f32,-true,-x,-sin())
             </pre>
             <h3>语法分析后的内容:</h3>
             <pre id="parser-syntax-output" class = "card-output"></pre>
+        </div>
+    </div>
+    <div id="test-caculator" class="card">
+        <div id="caculator-header" class="card-header"> Rust://src/my_math.rs 计算器 WASM 展示</div>
+        <div class="card-content">
+            <h3>计算输入框:</h3>
+            <pre contenteditable="true" placeholder="请输入表达式" id="caculator-input" class="card-input">
+x=1+2+3+4+5+6+7+8+9+10;             // 由于我设置了 Runtime, 因此可以暂存变量
+y=sqrt(x) + exp(200/x) + log(x)     // 也就是你可以删去前面这两行, x 和 y 仍然存在
+{x=x-1;z=y+1;y=2 x-z}               // 代码块内部可以获取到外部的变量, 并对其进行修改, 因此每次运行都会令 x 减小（删去前两行）
+z                                   // z 是在代码块中赋值的，作用域不到这里，因此第一次为空值（不输出），第二次才会输出
+z=sqrt(square(x)+square(y))         // 使用函数嵌套
+arctan2(x/z,abs(((y/z))))           // 多层括号嵌套
+(x,y,z)                             // 元组类型也可正常显示
+            </pre>
+            <h3>计算结果:</h3>
+            <pre id="caculator-output" class = "card-output"></pre>
         </div>
     </div>
 

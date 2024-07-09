@@ -959,9 +959,11 @@ impl Sentence {
             Sentence::Seperator => Val::NONE,
             Sentence::Block(b) => {
                 let mut res = vec![];
+                rt.push();
                 for s in b {
                     res.push(s.calc(rt));
                 }
+                rt.pop();
                 Val::Vars(my_math::Tuple(res))
             }
         }
@@ -1358,58 +1360,19 @@ impl CalcUnit {
     pub fn calc(&self, rt: &mut Runtime) -> Val {
         match self {
             CalcUnit::Literal(Literal::Number(d)) => Val::Re(my_math::Re(*d)),
-            CalcUnit::Literal(Literal::Identifier(x)) => rt.get_val(&x.name).unwrap_or_else(|| {
-                rt.get_sys_val(&x.name)
-                    .unwrap_or(&Val::NONE)
-                    .to_owned()
-                    .reduce()
-            }),
-            CalcUnit::NegVal(Literal::Number(d)) => Val::Re(my_math::Re(*d)).neg(),
-            CalcUnit::NegVal(Literal::Identifier(x)) => rt
-                .get_val(&x.name)
-                .unwrap_or_else(|| {
-                    rt.get_sys_val(&x.name)
-                        .unwrap_or(&Val::NONE)
-                        .to_owned()
-                        .reduce()
-                })
-                .neg(),
-            CalcUnit::Identifier(x) => rt.get_val(&x.name).unwrap_or_else(|| {
-                rt.get_sys_val(&x.name)
-                    .unwrap_or(&Val::NONE)
-                    .to_owned()
-                    .reduce()
-            }),
-            CalcUnit::NegVar(x) => rt
-                .get_val(&x.name)
-                .unwrap_or_else(|| {
-                    rt.get_sys_val(&x.name)
-                        .unwrap_or(&Val::NONE)
-                        .to_owned()
-                        .reduce()
-                })
-                .neg(),
-            CalcUnit::Function(f, vars) => rt
-                .get_val(&f.name)
-                .unwrap_or_else(|| {
-                    rt.get_sys_val(&f.name)
-                        .unwrap_or(&Val::NONE)
-                        .to_owned()
-                        .reduce()
-                })
-                .calls(vars.calc(rt).reduce(), rt)
-                .reduce(),
-            CalcUnit::NegFun(f, vars) => rt
-                .get_val(&f.name)
-                .unwrap_or_else(|| {
-                    rt.get_sys_val(&f.name)
-                        .unwrap_or(&Val::NONE)
-                        .to_owned()
-                        .reduce()
-                })
-                .calls(vars.calc(rt).reduce(), rt)
-                .reduce()
-                .neg(),
+            CalcUnit::Literal(Literal::Identifier(x)) => rt.get_val(&x.name).reduce(),
+            CalcUnit::NegVal(Literal::Number(d)) => Val::Re(my_math::Re(*d)).reduce().neg(),
+            CalcUnit::NegVal(Literal::Identifier(x)) => rt.get_val(&x.name).neg(),
+            CalcUnit::Identifier(x) => rt.get_val(&x.name).reduce(),
+            CalcUnit::NegVar(x) => rt.get_val(&x.name).reduce().neg(),
+            CalcUnit::Function(f, vars) => {
+                let vars = vars.calc(rt).reduce();
+                rt.calls(&f.name, vars).reduce()
+            }
+            CalcUnit::NegFun(f, vars) => {
+                let vars = vars.calc(rt).reduce();
+                rt.calls(&f.name, vars).reduce().neg()
+            }
             CalcUnit::Tuple(vars) => vars.calc(rt).reduce(),
             _ => Val::NONE,
         }
