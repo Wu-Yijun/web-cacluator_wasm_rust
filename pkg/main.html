@@ -41,8 +41,13 @@ if x &lt;= 5 { retrun 0; }</pre>
         <div class="card-content">
             <h3>待语法分析的内容:</h3>
             <pre contenteditable="true" placeholder="请输入表达式" id="parser-syntax-input" class="card-input">
-y % x + sin(3 x^-2+-4 + 2/-t)5
-print('c',"str",3.1415f32,true,x,sin())
+y % x + -sin(3 x^-2+-4.1 + 2/-t)  // -4 -t 可以自动解析为前置取负, 布尔和函数也可取负
+{x=1;y=sqrt(2-x);x-y}1 2  // 花括号代码块不会和外部表达式相连，但空格默认为乘法
+3    // 由于发生了换行，因此不会相连
+4;5  // 由于有分号，因此不相连
+-x   // 由于符号在第一个，因此会连接
+(-y) // 由于加了括号，因此不连接
+print('c',"str",3.1415f32,-true,-x,-sin())
             </pre>
             <h3>语法分析后的内容:</h3>
             <pre id="parser-syntax-output" class = "card-output"></pre>

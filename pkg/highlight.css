@@ -43,6 +43,11 @@
     color: green;
 }
 
+.syntax_assign{
+    font-weight: bold;
+    color: rgb(0, 107, 128);
+}
+
 .tree_syntax{
     font-weight: normal;
     color: rgb(120, 120, 120);

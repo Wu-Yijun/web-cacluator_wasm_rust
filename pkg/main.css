@@ -52,7 +52,7 @@
 /*滚动条整体样式*/
 ::-webkit-scrollbar {
     height: 10px;
-    width: 20px;
+    width: 12px;
 }
 
 /*滚动条里面小方块*/

@@ -1,8 +1,8 @@
-use my_parser::{Expression, LexicalParser};
+use my_parser::LexicalParser;
 use wasm_bindgen::prelude::*;
 
+// mod my_math;
 mod my_parser;
-mod my_math;
 
 // 导入函数
 #[wasm_bindgen]
@@ -64,10 +64,14 @@ pub fn parse(input: &str, level: u32) -> String {
 }
 
 #[wasm_bindgen]
-pub fn pares_and_print_html(input: &str) -> String{
-    let line1 = LexicalParser::new_inline(input.to_string()).parse().unwrap().print(11);
-    let line2 = LexicalParser::new_inline(input.to_string()).parse().unwrap().tree(0, true);
-    line1 + "\n<span class='tree_syntax'>"+ &line2 + "</span>"
+pub fn pares_and_print_html(input: &str) -> String {
+    let line1 = LexicalParser::new_inline(input.to_string())
+        .parse()
+        .print(11);
+    let line2 = LexicalParser::new_inline(input.to_string())
+        .parse()
+        .tree(0, true);
+    line1 + "\n<span class='tree_syntax'>" + &line2 + "</span>"
 }
 
 // rust 中的测试
@@ -75,10 +79,11 @@ pub fn pares_and_print_html(input: &str) -> String{
 fn test() {
     let parser = LexicalParser::new_inline(
         // expressions
-        "sin(x, y+ 2*(3+-5.3f32 -x))".to_string(),
+        "2\n2".to_string(),
+        // "sin(x, y+ 2*(3+-5.3f32 -x));plot(X);{x;y+1}".to_string(),
         // "2(3+5 x)()".to_string(),
     );
-    println!("{}",parser.print(3));
-    let exp = parser.parse().unwrap();
-    println!("{}",exp.print(11));
+    println!("{}", parser.print(3));
+    let exp = parser.parse();
+    println!("{}", exp.tree(0, false));
 }

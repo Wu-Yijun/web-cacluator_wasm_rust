@@ -1,16 +1,13 @@
 use std::f64;
 
-use js_sys::Function;
-use wasm_bindgen::prelude::*;
-
 #[derive(Debug)]
 pub struct LexicalParser {
     tokens: Vec<Token>,
-    current: usize,
+    // current: usize,
 }
 
 #[derive(Debug, Clone, Default)]
-struct Token {
+pub struct Token {
     token_type: TokenType,
     lexeme: String,
     literal: Option<Literal>,
@@ -22,7 +19,7 @@ struct Token {
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-enum TokenType {
+pub enum TokenType {
     // -------- Single-character tokens --------
     /// (
     LeftParen,
@@ -132,7 +129,7 @@ enum TokenType {
 }
 
 #[derive(Debug, Clone)]
-enum Literal {
+pub enum Literal {
     Identifier(Identifier),
     Char(char),
     String(String),
@@ -141,18 +138,18 @@ enum Literal {
 }
 
 #[derive(Debug, Clone)]
-struct Identifier {
+pub struct Identifier {
     name: String,
-    fun: bool,
-    var: bool,
-    is_neg: bool,
+    // fun: bool,
+    // var: bool,
+    // is_neg: bool,
 }
 
 impl LexicalParser {
     pub fn new_inline(line: String) -> Self {
         let tokens = vec![];
-        let current = 0;
-        let mut parser = LexicalParser { tokens, current };
+        // let current = 0;
+        let mut parser = LexicalParser { tokens };
         parser.parse_line(line);
         parser
     }
@@ -180,8 +177,8 @@ impl LexicalParser {
         self.tokens.iter().map(|t| t.print(level)).collect()
     }
 
-    pub fn parse(&self) -> Option<Expression> {
-        Some(Expression::from(&self.tokens)?.0)
+    pub fn parse(&self) -> Article {
+        Article::from(&self.tokens)
     }
 }
 
@@ -444,6 +441,9 @@ impl Token {
     fn is_identifier(&self) -> bool {
         self.token_type == TokenType::Identifier
     }
+    fn is_assign(&self) -> bool {
+        self.token_type == TokenType::Equal
+    }
     fn is_pos_neg(&self) -> bool {
         self.token_type == TokenType::Plus || self.token_type == TokenType::Minus
     }
@@ -662,24 +662,24 @@ impl Literal {
         Some(Literal::Bool(b))
     }
 
-    pub fn into_neg(self, is_neg: bool) -> Option<Self> {
-        if is_neg {
-            match self {
-                Literal::Bool(b) => Some(Literal::Bool(!b)),
-                Literal::Number(d) => Some(Literal::Number(-d)),
-                Literal::Identifier(mut x) => {
-                    x.is_neg = !x.is_neg;
-                    Some(Literal::Identifier(x))
-                }
-                _ => None,
-            }
-        } else {
-            match self {
-                Literal::Bool(..) | Literal::Number(..) | Literal::Identifier(..) => Some(self),
-                _ => None,
-            }
-        }
-    }
+    // pub fn into_neg(self, is_neg: bool) -> Option<Self> {
+    //     if is_neg {
+    //         match self {
+    //             Literal::Bool(b) => Some(Literal::Bool(!b)),
+    //             Literal::Number(d) => Some(Literal::Number(-d)),
+    //             Literal::Identifier(mut x) => {
+    //                 x.is_neg = !x.is_neg;
+    //                 Some(Literal::Identifier(x))
+    //             }
+    //             _ => None,
+    //         }
+    //     } else {
+    //         match self {
+    //             Literal::Bool(..) | Literal::Number(..) | Literal::Identifier(..) => Some(self),
+    //             _ => None,
+    //         }
+    //     }
+    // }
 
     pub fn print(&self, level: usize) -> String {
         if level < 3 {
@@ -720,9 +720,9 @@ impl Identifier {
     fn new(name: String) -> Self {
         Identifier {
             name,
-            fun: false,
-            var: false,
-            is_neg: false,
+            // fun: false,
+            // var: false,
+            // is_neg: false,
         }
     }
 }
@@ -759,13 +759,249 @@ fn char_starts_with(c: &[char], offset: usize, s: &str) -> bool {
 // ----------- syntax parser ------------------- //
 
 #[derive(Debug, Clone)]
+pub enum Article {
+    Sentences(Vec<Sentence>),
+}
+
+impl Article {
+    pub fn from(tks: &[Token]) -> Self {
+        let mut res = vec![];
+        let mut offset = 0;
+        while let Some((s, len)) = Sentence::from(&tks[offset..]) {
+            offset += len;
+            res.push(s);
+        }
+        Article::Sentences(res)
+    }
+
+    // level 11: with html
+    pub fn print(&self, level: usize) -> String {
+        match self {
+            Article::Sentences(ss) => {
+                let mut res = String::new();
+                for s in ss {
+                    res += &s.print(level);
+                }
+                if level == 11 {
+                    format!("<span class='syntax_article_stntences'>{}</span>", res)
+                } else {
+                    res
+                }
+            }
+        }
+    }
+
+    pub fn tree(&self, level: usize, html: bool) -> String {
+        match self {
+            Article::Sentences(ss) => {
+                let mut res = format!("+Article Sentences {}", ss.len());
+                for s in ss {
+                    res += "\n";
+                    res += &(INDENT.repeat(level) + "+   " + &s.tree(level, html));
+                }
+                res
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Sentence {
+    AssignmentExp(AssignmentExp),
+    Expression(Expression),
+    /// ;
+    Seperator,
+    // {Stentence}
+    Block(Vec<Sentence>),
+}
+
+#[derive(Debug, Clone)]
+pub struct AssignmentExp(Identifier, Expression);
+
+impl Sentence {
+    pub fn from(tks: &[Token]) -> Option<(Self, usize)> {
+        let mut offset = 0;
+        // 0 -> Ok: Seperator
+        // 0 -> 1 : {
+        // 1 -> 1 : Stentence
+        // 1 -> 2 : !Stentence
+        // 2 -> Ok: }
+        // 0 -> Ok: AssignmentExp
+        // 0 -> Ok: Expression
+        let mut state = 0;
+        let mut res = None;
+        let mut blocks = vec![];
+        while offset < tks.len() && !tks[offset].is_eof() {
+            if tks[offset].is_skipped() {
+                offset += 1;
+                continue;
+            }
+            match state {
+                0 if tks[offset].token_type.is_char(';') => {
+                    offset += 1;
+                    res = Some((Sentence::Seperator, offset));
+                    return res;
+                }
+                0 if tks[offset].token_type.is_char('{') => {
+                    offset += 1;
+                    state = 1;
+                    continue;
+                }
+                0 => {
+                    if let Some((asexp, len)) = AssignmentExp::from(&tks[offset..]) {
+                        offset += len;
+                        res = Some((Sentence::AssignmentExp(asexp), offset));
+                        return res;
+                    } else if let Some((exp, len)) = Expression::from(&tks[offset..]) {
+                        offset += len;
+                        res = Some((Sentence::Expression(exp), offset));
+                        return res;
+                    }
+                }
+                1 => {
+                    while let Some((st, len)) = Sentence::from(&tks[offset..]) {
+                        blocks.push(st);
+                        offset += len;
+                    }
+                    state = 2;
+                    continue;
+                }
+                2 if tks[offset].token_type.is_char('}') => {
+                    offset += 1;
+                    res = Some((Sentence::Block(blocks), offset));
+                    return res;
+                }
+                _ => {}
+            }
+            return res;
+        }
+        res
+    }
+
+    // level 11: with html
+    pub fn print(&self, level: usize) -> String {
+        if level == 11 {
+            match self {
+                Sentence::AssignmentExp(asexp) => asexp.print(level),
+                Sentence::Expression(exp) => exp.print(level) + "\n",
+                Sentence::Seperator => "<span class='syntax_seperator'>;</span>\n".to_string(),
+                Sentence::Block(ss) => {
+                    let mut res = "{\n".to_string();
+                    for s in ss.iter() {
+                        res += &s.print(level);
+                    }
+                    res += "}\n";
+                    format!("<span class='syntax_codeblock'>{res}</span>\n")
+                }
+            }
+        } else {
+            match self {
+                Sentence::AssignmentExp(asexp) => asexp.print(level),
+                Sentence::Expression(exp) => exp.print(level) + "\n",
+                Sentence::Seperator => ";\n".to_string(),
+                Sentence::Block(ss) => {
+                    let mut res = "{\n".to_string();
+                    for s in ss.iter() {
+                        res += &s.print(level);
+                    }
+                    res + "}\n"
+                }
+            }
+        }
+    }
+
+    pub fn tree(&self, level: usize, html: bool) -> String {
+        match self {
+            Sentence::AssignmentExp(asexp) => asexp.tree(level, html),
+            Sentence::Expression(exp) => exp.tree(level, html),
+            Sentence::Seperator => tree_node(html, " ;"),
+            Sentence::Block(ss) => {
+                let mut res = "+CodeBlock".to_string();
+                for s in ss.iter() {
+                    res += "\n";
+                    res += &(INDENT.repeat(level) + "|---");
+                    res += &s.tree(level + 1, html);
+                }
+                res
+            }
+        }
+    }
+}
+
+impl AssignmentExp {
+    pub fn from(tks: &[Token]) -> Option<(Self, usize)> {
+        let mut offset = 0;
+        // 0 -> 1 : Identifer
+        // 1 -> 2 : '='
+        // 2 -> Ok: Expression
+        let mut state = 0;
+        let mut id = None;
+        let mut res = None;
+        while offset < tks.len() && !tks[offset].is_eof() {
+            if tks[offset].is_skipped() {
+                offset += 1;
+                continue;
+            }
+            match state {
+                0 if tks[offset].is_identifier() => {
+                    if let Some(Literal::Identifier(i)) = tks[offset].literal.clone() {
+                        offset += 1;
+                        id = Some(i);
+                        state = 1;
+                        continue;
+                    }
+                }
+                1 if tks[offset].is_assign() => {
+                    offset += 1;
+                    state = 2;
+                    continue;
+                }
+                2 => {
+                    if let Some((ex, len)) = Expression::from(&tks[offset..]) {
+                        offset += len;
+                        res = Some((AssignmentExp(id?, ex), offset));
+                        return res;
+                    }
+                }
+                _ => {}
+            }
+            return res;
+        }
+        res
+    }
+
+    // level 11: with html
+    pub fn print(&self, level: usize) -> String {
+        if level == 11 {
+            format!(
+                "<span class='syntax_assign'>{} = {}</span>\n",
+                self.0.name,
+                self.1.print(level)
+            )
+        } else {
+            format!("{} = {}\n", self.0.name, self.1.print(level))
+        }
+    }
+
+    pub fn tree(&self, level: usize, html: bool) -> String {
+        format!(
+            "+Assign {} {}",
+            &tree_node(html, &self.0.name),
+            self.1.tree(level + 1, html)
+        )
+    }
+}
+
+// basic expression
+
+#[derive(Debug, Clone)]
 pub enum Expression {
     /// exp ([+-*/] exp)*
     Operation(CalcUnit, Vec<(TokenType, CalcUnit)>),
 }
 
 #[derive(Debug, Clone)]
-enum CalcUnit {
+pub enum CalcUnit {
     /// 123
     Literal(Literal),
     /// - 123
@@ -776,38 +1012,48 @@ enum CalcUnit {
     NegVar(Identifier),
     /// f(...)
     Function(Identifier, Tuple),
+    /// - f(...)
+    NegFun(Identifier, Tuple),
     /// (...)
     Tuple(Tuple),
 }
 
 #[derive(Debug, Clone)]
-struct Tuple {
+pub struct Tuple {
     val: Vec<Expression>,
 }
 
 impl Expression {
     pub fn from(tks: &[Token]) -> Option<(Self, usize)> {
         let mut offset = 0;
-        // 0 -> 1 : CalcUnit
-        // 1 -> 2 : Token.is_calc_op()
-        // 1 -> 1 : CalcUnit // default multiply
-        // 1 -> Ok: Else
-        // 2 -> 1 : CalcUnit
+        // 0    -> 1 : CalcUnit
+        // 1, 3 -> 2 : Token.is_calc_op()
+        // 1, 3 -> 3 : Token.NewLine
+        // 1    -> 1 : CalcUnit // default multiply
+        // 1    -> Ok: Else
+        // 2    -> 1 : CalcUnit
+        // 3    -> Ok: else
         let mut state = 0;
         let mut unit = None;
         let mut units = vec![];
         let mut op = TokenType::Star;
         while offset < tks.len() && !tks[offset].is_eof() {
             if tks[offset].is_skipped() {
+                if state == 1 && tks[offset].is_newline() {
+                    state = 3;
+                }
                 offset += 1;
                 continue;
             }
             match state {
-                1 if tks[offset].is_calc_op() => {
+                1 | 3 if tks[offset].is_calc_op() => {
                     op = tks[offset].token_type;
                     offset += 1;
                     state = 2;
                     continue;
+                }
+                3 => {
+                    return Some((Expression::Operation(unit?, units), offset));
                 }
                 0 | 1 | 2 => {
                     if let Some((cu, len)) = CalcUnit::from(&tks[offset..]) {
@@ -886,9 +1132,12 @@ impl CalcUnit {
         // 0 -> 1       : +/-
         // 0 -> 2       : Identifier
         // 0 -> Tuple   : Tuple
-        // 1 -> NegVal  : Literal/Identifier
+        // 1 -> NegVal  : Literal
+        // 1 -> 3       : Identifier
         // 2 -> Function: ~Tuple
         // 2 -> Identifier: Else
+        // 3 -> NegFun  : ~Tuple
+        // 3 -> NegVar  : Else
         let mut state = 0;
         let mut id = None;
         let mut is_neg = false;
@@ -939,21 +1188,27 @@ impl CalcUnit {
                     }
                 }
                 1 if tks[offset].is_identifier() => {
-                    if let Some(Literal::Identifier(id)) = tks[offset].literal.clone() {
+                    if let Literal::Identifier(id0) = tks[offset].literal.clone()? {
                         offset += 1;
-                        if is_neg {
-                            return Some((CalcUnit::NegVar(id), offset));
-                        } else {
-                            return Some((CalcUnit::Identifier(id), offset));
-                        }
+                        id = Some(id0);
+                        state = 3;
+                        continue;
                     }
                 }
-                2 => {
+                2 | 3 => {
                     if let Some((tp, len)) = Tuple::from(&tks[offset..]) {
                         offset += len;
-                        return Some((CalcUnit::Function(id?, tp), offset));
+                        if is_neg {
+                            return Some((CalcUnit::NegFun(id?, tp), offset));
+                        } else {
+                            return Some((CalcUnit::Function(id?, tp), offset));
+                        }
                     }
-                    return Some((CalcUnit::Identifier(id?), offset));
+                    if is_neg {
+                        return Some((CalcUnit::NegVar(id?), offset));
+                    } else {
+                        return Some((CalcUnit::Identifier(id?), offset));
+                    }
                 }
                 _ => {}
             }
@@ -984,6 +1239,11 @@ impl CalcUnit {
                     f.name,
                     vars.print(level)
                 ),
+                CalcUnit::NegFun(f, vars) => format!(
+                    "<span class='syntax_neg'>-<span class='syntax_fun'>{}{}</span></span>",
+                    f.name,
+                    vars.print(level)
+                ),
                 CalcUnit::Tuple(t) => t.print(level),
             }
         } else {
@@ -995,6 +1255,7 @@ impl CalcUnit {
                 }
                 CalcUnit::NegVar(i) => format!("-{}", i.name),
                 CalcUnit::Function(f, vars) => format!("{}{}", f.name, vars.print(level)),
+                CalcUnit::NegFun(f, vars) => format!("-{}{}", f.name, vars.print(level)),
                 CalcUnit::Tuple(t) => t.print(level),
             }
         }
@@ -1008,6 +1269,11 @@ impl CalcUnit {
             CalcUnit::NegVar(i) => " Identifier Minus ".to_string() + &tree_node(html, &i.name),
             CalcUnit::Function(f, vars) => {
                 let mut res = "+Function ".to_string() + &tree_node(html, &f.name) + "\n";
+                res += &(INDENT.repeat(level) + "+---" + &vars.tree(level + 1, html));
+                res
+            }
+            CalcUnit::NegFun(f, vars) => {
+                let mut res = "+Function Minus ".to_string() + &tree_node(html, &f.name) + "\n";
                 res += &(INDENT.repeat(level) + "+---" + &vars.tree(level + 1, html));
                 res
             }
