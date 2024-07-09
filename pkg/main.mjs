@@ -1,6 +1,6 @@
 // 导入 wasm 模块，以及 wasm 模块导出的类
 import initSync, {MyStruct} from './web_caculator_rust_wasm.js'
-import {create_struct, parse} from './web_caculator_rust_wasm.js'
+import {create_struct, parse, pares_and_print_html} from './web_caculator_rust_wasm.js'
 
 // 初始化
 const wasm = await initSync();
@@ -29,7 +29,19 @@ function update_parser(){
     let value = document.getElementById('parser-input').innerText;
     document.getElementById('parser-output').innerText = parse(value, 3)
 }
-
 document.getElementById('parser-input').oninput = update_parser;
-
 update_parser();
+
+function update_parser_syntax(){
+    let value = document.getElementById('parser-syntax-input').innerText;
+    document.getElementById('parser-syntax-output').innerHTML = pares_and_print_html(value)
+}
+document.getElementById('parser-syntax-input').oninput = update_parser_syntax;
+update_parser_syntax();
+
+// 设置点击折叠功能
+for( let element of document.getElementsByClassName('card-header')) {
+    element.addEventListener('click',()=>{
+        element.classList.toggle('card-hide');
+    });
+}

@@ -17,22 +17,38 @@
 
     <link href="favicon.ico" rel="shortcut icon">
     <link href="./main.css" rel="stylesheet">
+    <link href="./highlight.css" rel="stylesheet">
     <title>Advanced Graph Caculator</title>
 
 </head>
 
 <body>
     <div id="test-parser" class="card">
-        <div id="parser-header" class="card-header"> Rust://src/my_parser.rs 词法分析器 WASM 展示</div>
-        <h3>待词法分析的内容:</h3>
-        <pre contenteditable="true" placeholder="请输入表达式" id="parser-input">print([true, ok, false], [u32; 2], 
+        <div id="parser-header" class="card-header card-hide"> Rust://src/my_parser.rs 词法分析器 WASM 展示</div>
+        <div class="card-content">
+            <h3>待词法分析的内容:</h3>
+            <pre contenteditable="true" placeholder="请输入表达式" id="parser-input" class="card-input">print([true, ok, false], [u32; 2], 
         my_fun0(), x.y, [2:3], 0xFF_ff_32_87,
         {x: 'c', y: /* complexed literals */"string \\ \n \t \' \" $ "}, 
         1.23_456_789_0e-5f32) // numbers can have radix, expotional, and identifer such as u32, f64
 if x &lt;= 5 { retrun 0; }</pre>
-        <h3>词法分析后的内容:</h3>
-        <pre id="parser-output"></pre>
+            <h3>词法分析后的内容:</h3>
+            <pre id="parser-output" class = "card-output"></pre>
+        </div>
     </div>
+    <div id="test-syntax-parser" class="card">
+        <div id="parser-syntax-header" class="card-header"> Rust://src/my_parser.rs 语法分析器 WASM 展示</div>
+        <div class="card-content">
+            <h3>待语法分析的内容:</h3>
+            <pre contenteditable="true" placeholder="请输入表达式" id="parser-syntax-input" class="card-input">
+y % x + sin(3 x^-2+-4 + 2/-t)5
+print('c',"str",3.1415f32,true,x,sin())
+            </pre>
+            <h3>语法分析后的内容:</h3>
+            <pre id="parser-syntax-output" class = "card-output"></pre>
+        </div>
+    </div>
+
     <script>
         const values = [];
         // 用于被 main.mjs 中的 import wasm 中引用

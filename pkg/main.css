@@ -1,8 +1,15 @@
-#test-parser,
 .card {
     border: 1px solid grey;
     border-radius: 10px;
     margin: 40px;
+}
+
+.card-header::before {
+    content: '▼';
+}
+
+.card-header.card-hide::before {
+    content: '▶';
 }
 
 .card-header {
@@ -11,13 +18,19 @@
     font-size: 2em;
     font-weight: bolder;
     border-bottom: 1px dotted black;
+    cursor: pointer;
+    user-select: none;
 }
 
-#test-parser h3 {
+.card-hide+div {
+    display: none;
+}
+
+.card-content h3 {
     margin-left: 20px;
 }
 
-#test-parser #parser-input {
+.card-content .card-input {
     font-size: 2em;
     border: 1px solid grey;
     border-radius: 10px;
@@ -26,7 +39,7 @@
     overflow-x: scroll;
 }
 
-#test-parser #parser-output {
+.card-content .card-output {
     font-size: 1.5em;
     border: 1px solid grey;
     border-radius: 10px;

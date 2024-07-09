@@ -1,9 +1,10 @@
 use std::f64;
 
+use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
 #[derive(Debug)]
-pub struct Parser {
+pub struct LexicalParser {
     tokens: Vec<Token>,
     current: usize,
 }
@@ -47,6 +48,8 @@ enum TokenType {
     Semicolon,
     /// /
     Slash,
+    /// %
+    Percent,
     /// *
     Star,
     /// &
@@ -114,9 +117,9 @@ enum TokenType {
     // While,
 
     // -------- skipped --------
-    /// [ \t\n\r]
+    /// [ \t\r]
     Whitespace,
-    /// [\n\r]
+    /// [\n]
     NewLine,
     /// [\/][\*](.|\n)*[\*][\/]
     MuitiLineComment,
@@ -142,19 +145,20 @@ struct Identifier {
     name: String,
     fun: bool,
     var: bool,
+    is_neg: bool,
 }
 
-impl Parser {
+impl LexicalParser {
     pub fn new_inline(line: String) -> Self {
         let tokens = vec![];
         let current = 0;
-        let mut parser = Parser { tokens, current };
+        let mut parser = LexicalParser { tokens, current };
         parser.parse_line(line);
         parser
     }
     pub fn parse_line(&mut self, line: String) {
         let utf8_slice: Vec<char> = line.chars().collect();
-        let line = 0;
+        let mut line = 0;
         let mut colum = 0;
         let mut offset = 0;
         loop {
@@ -164,12 +168,20 @@ impl Parser {
             }
             colum = t.line_colum[1] + t.pos[1] - t.pos[0];
             offset = t.pos[1];
+            if t.is_newline() {
+                colum = 0;
+                line += 1;
+            }
             self.tokens.push(t);
         }
     }
 
     pub fn print(&self, level: usize) -> String {
         self.tokens.iter().map(|t| t.print(level)).collect()
+    }
+
+    pub fn parse(&self) -> Option<Expression> {
+        Some(Expression::from(&self.tokens)?.0)
     }
 }
 
@@ -178,12 +190,7 @@ impl Token {
         let mut len = 0;
         // skip whitespaces
         while offset < text.len() && TokenType::Whitespace.is_char(text[offset]) {
-            if TokenType::NewLine.is_char(text[offset]) {
-                line_colum[0] += 1;
-                line_colum[1] = 0;
-            } else {
-                line_colum[1] += 1;
-            }
+            line_colum[1] += 1;
             offset += 1;
         }
         // judge EOF
@@ -194,6 +201,17 @@ impl Token {
                 literal: None,
                 line_colum,
                 pos: [offset, offset + len],
+            };
+        }
+        // judge NewLine
+        if TokenType::NewLine.is_char(text[offset]) {
+            line_colum[0] += 1;
+            return Token {
+                token_type: TokenType::NewLine,
+                lexeme: "\n".to_string(),
+                literal: None,
+                line_colum,
+                pos: [offset, offset + 1],
             };
         }
         // judge Comments
@@ -417,10 +435,44 @@ impl Token {
         }
     }
 
+    fn is_literal(&self) -> bool {
+        match self.token_type {
+            TokenType::Char | TokenType::String | TokenType::Number | TokenType::Bool => true,
+            _ => false,
+        }
+    }
+    fn is_identifier(&self) -> bool {
+        self.token_type == TokenType::Identifier
+    }
+    fn is_pos_neg(&self) -> bool {
+        self.token_type == TokenType::Plus || self.token_type == TokenType::Minus
+    }
     fn is_eof(&self) -> bool {
         self.token_type == TokenType::EOF
     }
-
+    fn is_calc_op(&self) -> bool {
+        match self.token_type {
+            TokenType::Plus
+            | TokenType::Minus
+            | TokenType::Star
+            | TokenType::Slash
+            | TokenType::Percent
+            | TokenType::Caret => true,
+            _ => false,
+        }
+    }
+    fn is_newline(&self) -> bool {
+        self.token_type == TokenType::NewLine
+    }
+    fn is_skipped(&self) -> bool {
+        match self.token_type {
+            TokenType::Whitespace
+            | TokenType::NewLine
+            | TokenType::MuitiLineComment
+            | TokenType::SingleLineComment => true,
+            _ => false,
+        }
+    }
     fn print(&self, level: usize) -> String {
         match level {
             5 => format!("{:#?}\n", self),
@@ -464,6 +516,7 @@ impl TokenType {
             ':' => Some(TokenType::Colon),
             ';' => Some(TokenType::Semicolon),
             '/' => Some(TokenType::Slash),
+            '%' => Some(TokenType::Percent),
             '*' => Some(TokenType::Star),
             '&' => Some(TokenType::And),
             '|' => Some(TokenType::Or),
@@ -474,32 +527,38 @@ impl TokenType {
             _ => None,
         }
     }
+    pub fn to_char(&self) -> char {
+        match self {
+            TokenType::LeftParen => '(',
+            TokenType::RightParen => ')',
+            TokenType::LeftBrace => '{',
+            TokenType::RightBrace => '}',
+            TokenType::LeftSquare => '[',
+            TokenType::RightSquare => ']',
+            TokenType::Comma => ',',
+            TokenType::Dot => '.',
+            TokenType::Caret => '^',
+            TokenType::Minus => '-',
+            TokenType::Plus => '+',
+            TokenType::Semicolon => ';',
+            TokenType::Colon => ':',
+            TokenType::Slash => '/',
+            TokenType::Percent => '%',
+            TokenType::Star => '*',
+            TokenType::Bang => '!',
+            TokenType::Equal => '=',
+            TokenType::Greater => '>',
+            TokenType::Less => '<',
+            _ => '\0',
+        }
+    }
     pub fn is_char(&self, c: char) -> bool {
         match self {
-            TokenType::LeftParen => c == '(',
-            TokenType::RightParen => c == ')',
-            TokenType::LeftBrace => c == '{',
-            TokenType::RightBrace => c == '}',
-            TokenType::LeftSquare => c == '[',
-            TokenType::RightSquare => c == ']',
-            TokenType::Comma => c == ',',
-            TokenType::Dot => c == '.',
-            TokenType::Caret => c == '^',
-            TokenType::Minus => c == '-',
-            TokenType::Plus => c == '+',
-            TokenType::Semicolon => c == ';',
-            TokenType::Colon => c == ':',
-            TokenType::Slash => c == '/',
-            TokenType::Star => c == '*',
-            TokenType::Bang => c == '!',
-            TokenType::Equal => c == '=',
-            TokenType::Greater => c == '>',
-            TokenType::Less => c == '<',
-            TokenType::Whitespace => c == ' ' || c == '\t' || c == '\n' || c == '\r',
-            TokenType::NewLine => c == '\n' || c == '\r',
+            TokenType::Whitespace => c == ' ' || c == '\t' || c == '\r',
+            TokenType::NewLine => c == '\n',
             TokenType::Identifier => c.is_ascii_alphanumeric() || c == '_',
             TokenType::Number => c.is_ascii_alphanumeric() || c == '_',
-            _ => false,
+            _ => c == self.to_char(),
         }
     }
 }
@@ -602,6 +661,59 @@ impl Literal {
     pub fn from_bool(b: bool) -> Option<Self> {
         Some(Literal::Bool(b))
     }
+
+    pub fn into_neg(self, is_neg: bool) -> Option<Self> {
+        if is_neg {
+            match self {
+                Literal::Bool(b) => Some(Literal::Bool(!b)),
+                Literal::Number(d) => Some(Literal::Number(-d)),
+                Literal::Identifier(mut x) => {
+                    x.is_neg = !x.is_neg;
+                    Some(Literal::Identifier(x))
+                }
+                _ => None,
+            }
+        } else {
+            match self {
+                Literal::Bool(..) | Literal::Number(..) | Literal::Identifier(..) => Some(self),
+                _ => None,
+            }
+        }
+    }
+
+    pub fn print(&self, level: usize) -> String {
+        if level < 3 {
+            match self {
+                Literal::Identifier(i) => i.name.clone(),
+                Literal::Char(c) => c.to_string(),
+                Literal::String(s) => s.to_owned(),
+                Literal::Number(d) => d.to_string(),
+                Literal::Bool(b) => b.to_string(),
+            }
+        } else if level < 10 {
+            match self {
+                Literal::Identifier(i) => format!("<{}>", i.name.clone()),
+                Literal::Char(c) => format!("'{}'", c.to_string()),
+                Literal::String(s) => format!("\"{}\"", s.to_owned()),
+                Literal::Number(d) => format!("{}", d.to_string()),
+                Literal::Bool(b) => format!("{}", b.to_string()),
+            }
+        } else {
+            match self {
+                Literal::Identifier(i) => {
+                    format!("<span class='syntax_identifier'>{}</span>", i.name.clone())
+                }
+                Literal::Char(c) => format!("<span class='syntax_char'>'{}'</span>", c.to_string()),
+                Literal::String(s) => {
+                    format!("<span class='syntax_string'>\"{}\"</span>", s.to_owned())
+                }
+                Literal::Number(d) => {
+                    format!("<span class='syntax_number'>{}</span>", d.to_string())
+                }
+                Literal::Bool(b) => format!("<span class='syntax_bool'>{}</span>", b.to_string()),
+            }
+        }
+    }
 }
 
 impl Identifier {
@@ -610,6 +722,7 @@ impl Identifier {
             name,
             fun: false,
             var: false,
+            is_neg: false,
         }
     }
 }
@@ -641,4 +754,345 @@ fn char_starts_with(c: &[char], offset: usize, s: &str) -> bool {
         i += 1;
     }
     true
+}
+
+// ----------- syntax parser ------------------- //
+
+#[derive(Debug, Clone)]
+pub enum Expression {
+    /// exp ([+-*/] exp)*
+    Operation(CalcUnit, Vec<(TokenType, CalcUnit)>),
+}
+
+#[derive(Debug, Clone)]
+enum CalcUnit {
+    /// 123
+    Literal(Literal),
+    /// - 123
+    NegVal(Literal),
+    /// x
+    Identifier(Identifier),
+    /// - 123
+    NegVar(Identifier),
+    /// f(...)
+    Function(Identifier, Tuple),
+    /// (...)
+    Tuple(Tuple),
+}
+
+#[derive(Debug, Clone)]
+struct Tuple {
+    val: Vec<Expression>,
+}
+
+impl Expression {
+    pub fn from(tks: &[Token]) -> Option<(Self, usize)> {
+        let mut offset = 0;
+        // 0 -> 1 : CalcUnit
+        // 1 -> 2 : Token.is_calc_op()
+        // 1 -> 1 : CalcUnit // default multiply
+        // 1 -> Ok: Else
+        // 2 -> 1 : CalcUnit
+        let mut state = 0;
+        let mut unit = None;
+        let mut units = vec![];
+        let mut op = TokenType::Star;
+        while offset < tks.len() && !tks[offset].is_eof() {
+            if tks[offset].is_skipped() {
+                offset += 1;
+                continue;
+            }
+            match state {
+                1 if tks[offset].is_calc_op() => {
+                    op = tks[offset].token_type;
+                    offset += 1;
+                    state = 2;
+                    continue;
+                }
+                0 | 1 | 2 => {
+                    if let Some((cu, len)) = CalcUnit::from(&tks[offset..]) {
+                        offset += len;
+                        if state == 0 {
+                            unit = Some(cu);
+                        } else {
+                            units.push((op, cu));
+                            op = TokenType::Star;
+                        }
+                        state = 1;
+                        continue;
+                    } else if state == 1 {
+                        return Some((Expression::Operation(unit?, units), offset));
+                    }
+                }
+                _ => {}
+            }
+            return None;
+        }
+        Some((Expression::Operation(unit?, units), offset))
+    }
+
+    // level 11: with html
+    pub fn print(&self, level: usize) -> String {
+        if level == 11 {
+            match self {
+                Expression::Operation(cu, us) => {
+                    let mut res = cu.print(level);
+                    for (tt, u) in us {
+                        res += &format!(
+                            " <span class='syntax_operator'>{}</span> {}",
+                            tt.to_char(),
+                            u.print(level)
+                        );
+                    }
+                    format!("<span class='syntax_expression'>{}</span>", res)
+                }
+            }
+        } else {
+            match self {
+                Expression::Operation(cu, us) => {
+                    let mut res = cu.print(level);
+                    for (tt, u) in us {
+                        res += &format!(" {} {}", tt.to_char(), u.print(level));
+                    }
+                    format!("{}", res)
+                }
+            }
+        }
+    }
+
+    pub fn tree(&self, level: usize, html: bool) -> String {
+        match self {
+            Expression::Operation(cu, us) => {
+                let mut res = "+Expression: \n".to_string();
+                res += &(INDENT.repeat(level) + "+---" + &cu.tree(level + 1, html));
+                for (tt, u) in us {
+                    res += "\n";
+                    res += &(INDENT.repeat(level)
+                        + "| Operator "
+                        + &tree_node(html, &tt.to_char().to_string()));
+                    res += "\n";
+                    res += &(INDENT.repeat(level) + "+---" + &u.tree(level + 1, html));
+                }
+                res
+            }
+        }
+    }
+}
+
+impl CalcUnit {
+    fn from(tks: &[Token]) -> Option<(Self, usize)> {
+        let mut offset = 0;
+        // 0 -> Literal : Literal
+        // 0 -> 1       : +/-
+        // 0 -> 2       : Identifier
+        // 0 -> Tuple   : Tuple
+        // 1 -> NegVal  : Literal/Identifier
+        // 2 -> Function: ~Tuple
+        // 2 -> Identifier: Else
+        let mut state = 0;
+        let mut id = None;
+        let mut is_neg = false;
+        while offset < tks.len() && !tks[offset].is_eof() {
+            if tks[offset].is_skipped() {
+                if state != 2 {
+                    offset += 1;
+                    continue;
+                } else {
+                    return Some((CalcUnit::Identifier(id?), offset));
+                }
+            }
+            match state {
+                0 if tks[offset].is_literal() => {
+                    let it = tks[offset].literal.clone()?;
+                    offset += 1;
+                    return Some((CalcUnit::Literal(it), offset));
+                }
+                0 if tks[offset].is_identifier() => {
+                    if let Some(Literal::Identifier(i)) = &tks[offset].literal {
+                        offset += 1;
+                        id = Some(i.clone());
+                        state = 2;
+                        continue;
+                    }
+                }
+                0 if tks[offset].is_pos_neg() => {
+                    if tks[offset].token_type == TokenType::Minus {
+                        is_neg = true;
+                    }
+                    offset += 1;
+                    state = 1;
+                    continue;
+                }
+                0 => {
+                    if let Some((tp, len)) = Tuple::from(&tks[offset..]) {
+                        offset += len;
+                        return Some((CalcUnit::Tuple(tp), offset));
+                    }
+                }
+                1 if tks[offset].is_literal() => {
+                    let it = tks[offset].literal.clone()?;
+                    offset += 1;
+                    if is_neg {
+                        return Some((CalcUnit::NegVal(it), offset));
+                    } else {
+                        return Some((CalcUnit::Literal(it), offset));
+                    }
+                }
+                1 if tks[offset].is_identifier() => {
+                    if let Some(Literal::Identifier(id)) = tks[offset].literal.clone() {
+                        offset += 1;
+                        if is_neg {
+                            return Some((CalcUnit::NegVar(id), offset));
+                        } else {
+                            return Some((CalcUnit::Identifier(id), offset));
+                        }
+                    }
+                }
+                2 => {
+                    if let Some((tp, len)) = Tuple::from(&tks[offset..]) {
+                        offset += len;
+                        return Some((CalcUnit::Function(id?, tp), offset));
+                    }
+                    return Some((CalcUnit::Identifier(id?), offset));
+                }
+                _ => {}
+            }
+            return None;
+        }
+        if state == 2 {
+            return Some((CalcUnit::Identifier(id?), offset));
+        }
+        None
+    }
+
+    fn print(&self, level: usize) -> String {
+        if level == 11 {
+            match self {
+                CalcUnit::Literal(l) => l.print(level),
+                CalcUnit::Identifier(i) => {
+                    format!("<span class='syntax_identifier'>{}</span>", i.name)
+                }
+                CalcUnit::NegVal(l) => {
+                    format!("<span class='syntax_neg'>-{}</span>", l.print(level))
+                }
+                CalcUnit::NegVar(i) => format!(
+                    "<span class='syntax_neg'>-<span class='syntax_identifier'>{}</span></span>",
+                    i.name
+                ),
+                CalcUnit::Function(f, vars) => format!(
+                    "<span class='syntax_fun'>{}{}</span>",
+                    f.name,
+                    vars.print(level)
+                ),
+                CalcUnit::Tuple(t) => t.print(level),
+            }
+        } else {
+            match self {
+                CalcUnit::Literal(l) => l.print(level),
+                CalcUnit::Identifier(i) => format!("{}", i.name),
+                CalcUnit::NegVal(l) => {
+                    format!("-{}", l.print(level))
+                }
+                CalcUnit::NegVar(i) => format!("-{}", i.name),
+                CalcUnit::Function(f, vars) => format!("{}{}", f.name, vars.print(level)),
+                CalcUnit::Tuple(t) => t.print(level),
+            }
+        }
+    }
+
+    fn tree(&self, level: usize, html: bool) -> String {
+        match self {
+            CalcUnit::Literal(l) => " Literal ".to_string() + &tree_node(html, &l.print(3)),
+            CalcUnit::Identifier(i) => " Identifier ".to_string() + &tree_node(html, &i.name),
+            CalcUnit::NegVal(l) => " Literal Minus ".to_string() + &tree_node(html, &l.print(3)),
+            CalcUnit::NegVar(i) => " Identifier Minus ".to_string() + &tree_node(html, &i.name),
+            CalcUnit::Function(f, vars) => {
+                let mut res = "+Function ".to_string() + &tree_node(html, &f.name) + "\n";
+                res += &(INDENT.repeat(level) + "+---" + &vars.tree(level + 1, html));
+                res
+            }
+            CalcUnit::Tuple(t) => t.tree(level, html),
+        }
+    }
+}
+
+impl Tuple {
+    /// Warning: this func do not remove leading space before it, so it could return None
+    fn from(tks: &[Token]) -> Option<(Self, usize)> {
+        let mut offset = 0;
+        // 0 -> 1 : (
+        // 1 -> 2 : Expression
+        // 3 -> 2 : Expression
+        // 1 -> Ok: )
+        // 2 -> Ok: )
+        // 2 -> 3 : ,
+        let mut state = 0;
+        let mut exps = vec![];
+        while offset < tks.len() && !tks[offset].is_eof() {
+            if tks[offset].is_skipped() {
+                offset += 1;
+                continue;
+            }
+            match state {
+                0 if tks[offset].token_type == TokenType::LeftParen => {
+                    offset += 1;
+                    state = 1;
+                    continue;
+                }
+                1 | 2 if tks[offset].token_type == TokenType::RightParen => {
+                    offset += 1;
+                    return Some((Tuple { val: exps }, offset));
+                }
+                2 if tks[offset].token_type == TokenType::Comma => {
+                    offset += 1;
+                    state = 3;
+                    continue;
+                }
+                1 | 3 => {
+                    if let Some((exp, len)) = Expression::from(&tks[offset..]) {
+                        offset += len;
+                        state = 2;
+                        exps.push(exp);
+                        continue;
+                    }
+                }
+                _ => {}
+            }
+            return None;
+        }
+        None
+    }
+
+    fn print(&self, level: usize) -> String {
+        let mut res = "(".to_string();
+        for i in 0..self.val.len() {
+            res += &self.val[i].print(level);
+            if i + 1 < self.val.len() {
+                res += ", ";
+            }
+        }
+        if level == 11 {
+            format!("<span class='syntax_tuple'>{}</span>", res + ")")
+        } else {
+            res + ")"
+        }
+    }
+
+    fn tree(&self, level: usize, html: bool) -> String {
+        let mut res = "+Tuple ".to_string() + &tree_node(html, &self.val.len().to_string());
+        for i in self.val.iter() {
+            res += "\n";
+            res += &(INDENT.repeat(level) + "+---" + &i.tree(level + 1, html));
+        }
+        res
+    }
+}
+
+const INDENT: &str = "|   ";
+fn tree_node(html: bool, name: &str) -> String {
+    if html {
+        format!("<span class='tree_syntax_node'>{name}</span>")
+    } else {
+        name.to_string()
+    }
 }

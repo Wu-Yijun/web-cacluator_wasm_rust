@@ -1,0 +1,54 @@
+.syntax_number {
+    font-weight: bold;
+    color: dodgerblue;
+}
+
+.syntax_operator {
+    font-weight: normal;
+    color: black;
+}
+
+.syntax_identifier {
+    font-weight: normal;
+    color: rgb(14, 91, 206);
+}
+
+.syntax_fun {
+    font-weight: normal;
+    color: darkblue;
+}
+
+.syntax_tuple {
+    font-weight: normal;
+    color: purple;
+}
+
+.syntax_neg {
+    font-weight: normal;
+    color:gray;
+}
+
+.syntax_char {
+    font-weight: bold;
+    color: rgb(179, 153, 5);
+}
+
+.syntax_string {
+    font-weight: bold;
+    color: chocolate;
+}
+
+.syntax_bool {
+    font-weight: bold;
+    color: green;
+}
+
+.tree_syntax{
+    font-weight: normal;
+    color: rgb(120, 120, 120);
+}
+
+.tree_syntax_node{
+    font-weight: bold;
+    color: rgb(0, 0, 0);
+}

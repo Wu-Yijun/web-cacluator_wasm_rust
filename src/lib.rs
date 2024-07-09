@@ -1,7 +1,8 @@
-use my_parser::Parser;
+use my_parser::{Expression, LexicalParser};
 use wasm_bindgen::prelude::*;
 
 mod my_parser;
+mod my_math;
 
 // 导入函数
 #[wasm_bindgen]
@@ -59,34 +60,25 @@ pub fn create_struct() -> MyStruct {
 
 #[wasm_bindgen]
 pub fn parse(input: &str, level: u32) -> String {
-    Parser::new_inline(input.to_string()).print(level as usize)
+    LexicalParser::new_inline(input.to_string()).print(level as usize)
+}
+
+#[wasm_bindgen]
+pub fn pares_and_print_html(input: &str) -> String{
+    let line1 = LexicalParser::new_inline(input.to_string()).parse().unwrap().print(11);
+    let line2 = LexicalParser::new_inline(input.to_string()).parse().unwrap().tree(0, true);
+    line1 + "\n<span class='tree_syntax'>"+ &line2 + "</span>"
 }
 
 // rust 中的测试
 #[test]
 fn test() {
-    let parser = Parser::new_inline(
-        "y: \"string \\\\ \\n \\t \\' \\\" $ \"".to_string(),
-        // "Plot(((x+0.1)^2)^cos(T)) /* 使用 Shift + 删除 消去一行 */ ".to_string(),
-        
+    let parser = LexicalParser::new_inline(
+        // expressions
+        "sin(x, y+ 2*(3+-5.3f32 -x))".to_string(),
+        // "2(3+5 x)()".to_string(),
     );
-    // stdout().write_all(parser.print(5).as_bytes());
-    // stdout().write_all(b"\n-------------------------\n");
-    // stdout().write_all(parser.print(4).as_bytes());
-    // stdout().write_all(b"\n-------------------------\n");
-    // stdout().write_all(parser.print(3).as_bytes());
-    // stdout().write_all(b"\n-------------------------\n");
-    // stdout().write_all(parser.print(2).as_bytes());
-    // stdout().write_all(b"\n-------------------------\n");
-    // stdout().write_all(parser.print(1).as_bytes());
-    // stdout().write_all(b"\n-------------------------\n");
-    // stdout().write_all(parser.print(0).as_bytes());
-    println!("{:?}", parser.print(3));
-    // println!("{:?}", parser.print(4));
-    // println!("{:?}", parser.print(3));
-    // println!("{:?}", parser.print(2));
-    // println!("{:?}", parser.print(1));
-    // println!("{:?}", parser.print(0));
-    // let four: f64 = 123.456;
-    // println!("{:#?}", four);
+    println!("{}",parser.print(3));
+    let exp = parser.parse().unwrap();
+    println!("{}",exp.print(11));
 }
