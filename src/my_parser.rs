@@ -138,7 +138,8 @@ pub enum Literal {
     Identifier(Identifier),
     Char(char),
     String(String),
-    Number(f64),
+    /// (digit, is Image)
+    Number(f64, bool),
     Bool(bool),
 }
 
@@ -283,6 +284,47 @@ impl Token {
                     line_colum,
                     pos: [offset, offset + 5],
                 };
+            }
+            'i' if char_starts_with(text, offset, "i") => {
+                // number starts with true and text[1] is not alphanumeric
+                // I
+                return Token {
+                    token_type: TokenType::Number,
+                    lexeme: text[offset..offset + 1].iter().collect(),
+                    literal: Some(Literal::Number(1.0, true)),
+                    line_colum,
+                    pos: [offset, offset + 1],
+                };
+            }
+            'e' if char_starts_with(text, offset, "e") => {
+                // number starts with true and text[1] is not alphanumeric
+                // E
+                return Token {
+                    token_type: TokenType::Number,
+                    lexeme: text[offset..offset + 1].iter().collect(),
+                    literal: Some(Literal::Number(std::f64::consts::E, false)),
+                    line_colum,
+                    pos: [offset, offset + 1],};
+            }
+            'p' if char_starts_with(text, offset, "pi") => {
+                // number starts with true and text[2] is not alphanumeric
+                // Pi
+                return Token {
+                    token_type: TokenType::Number,
+                    lexeme: text[offset..offset + 2].iter().collect(),
+                    literal: Some(Literal::Number(std::f64::consts::PI, false)),
+                    line_colum,
+                    pos: [offset, offset + 2],};
+            }
+            'π' => {
+                // number starts with true and text[2] is not alphanumeric
+                // Pi
+                return Token {
+                    token_type: TokenType::Number,
+                    lexeme: text[offset..offset + 1].iter().collect(),
+                    literal: Some(Literal::Number(std::f64::consts::PI, false)),
+                    line_colum,
+                    pos: [offset, offset + 1],};
             }
             _ => {}
         }
